@@ -24,6 +24,7 @@ class TimelineWidget(QWidget):
         self.thumbnails: list[QPixmap] = []
 
         self._dragging: str | None = None
+        self._hover_handle: str | None = None
 
     def set_video_data(
         self,
@@ -101,29 +102,52 @@ class TimelineWidget(QWidget):
         painter.setPen(QPen(QColor("#f7d154"), 2))
         painter.drawLine(current_x, timeline.top(), current_x, timeline.bottom())
 
-        painter.setPen(QPen(QColor("#22c55e"), 3))
+        start_color = QColor("#86efac") if self._dragging == "start" else QColor("#22c55e")
+        end_color = QColor("#fca5a5") if self._dragging == "end" else QColor("#ef4444")
+
+        painter.setPen(QPen(start_color, 3))
         painter.drawLine(start_x, timeline.top(), start_x, timeline.bottom())
-        painter.setBrush(QColor("#22c55e"))
+        painter.setBrush(start_color)
         painter.setPen(QPen(QColor("#111111"), 1))
-        painter.drawEllipse(start_x - self.KNOB_RADIUS, timeline.top() - self.KNOB_RADIUS, self.KNOB_RADIUS * 2, self.KNOB_RADIUS * 2)
+        start_radius = self.KNOB_RADIUS + (1 if self._hover_handle == "start" or self._dragging == "start" else 0)
+        painter.drawEllipse(start_x - start_radius, timeline.top() - start_radius, start_radius * 2, start_radius * 2)
         painter.drawEllipse(
-            start_x - self.KNOB_RADIUS,
-            timeline.bottom() - self.KNOB_RADIUS,
-            self.KNOB_RADIUS * 2,
-            self.KNOB_RADIUS * 2,
+            start_x - start_radius,
+            timeline.bottom() - start_radius,
+            start_radius * 2,
+            start_radius * 2,
         )
 
-        painter.setPen(QPen(QColor("#ef4444"), 3))
+        painter.setPen(QPen(end_color, 3))
         painter.drawLine(end_x, timeline.top(), end_x, timeline.bottom())
-        painter.setBrush(QColor("#ef4444"))
+        painter.setBrush(end_color)
         painter.setPen(QPen(QColor("#111111"), 1))
-        painter.drawEllipse(end_x - self.KNOB_RADIUS, timeline.top() - self.KNOB_RADIUS, self.KNOB_RADIUS * 2, self.KNOB_RADIUS * 2)
+        end_radius = self.KNOB_RADIUS + (1 if self._hover_handle == "end" or self._dragging == "end" else 0)
+        painter.drawEllipse(end_x - end_radius, timeline.top() - end_radius, end_radius * 2, end_radius * 2)
         painter.drawEllipse(
-            end_x - self.KNOB_RADIUS,
-            timeline.bottom() - self.KNOB_RADIUS,
-            self.KNOB_RADIUS * 2,
-            self.KNOB_RADIUS * 2,
+            end_x - end_radius,
+            timeline.bottom() - end_radius,
+            end_radius * 2,
+            end_radius * 2,
         )
+
+    def _update_hover_and_cursor(self, x: int) -> None:
+        start_x = self._frame_to_x(self.start_frame)
+        end_x = self._frame_to_x(self.end_frame)
+        previous = self._hover_handle
+
+        if abs(x - start_x) <= self.HANDLE_RADIUS:
+            self._hover_handle = "start"
+            self.setCursor(Qt.SizeHorCursor)
+        elif abs(x - end_x) <= self.HANDLE_RADIUS:
+            self._hover_handle = "end"
+            self.setCursor(Qt.SizeHorCursor)
+        else:
+            self._hover_handle = None
+            self.setCursor(Qt.ArrowCursor)
+
+        if previous != self._hover_handle:
+            self.update()
 
     def mousePressEvent(self, event) -> None:
         if event.button() != Qt.LeftButton:
@@ -143,12 +167,15 @@ class TimelineWidget(QWidget):
             self.current_frame = frame
             self.currentFrameChanged.emit(frame)
             self.update()
+        self._update_hover_and_cursor(x)
 
     def mouseMoveEvent(self, event) -> None:
+        x = int(event.position().x())
+
         if self._dragging is None:
+            self._update_hover_and_cursor(x)
             return
 
-        x = int(event.position().x())
         frame = self._x_to_frame(x)
 
         if self._dragging == "start":
@@ -162,5 +189,12 @@ class TimelineWidget(QWidget):
                 self.update()
 
     def mouseReleaseEvent(self, event) -> None:
-        del event
+        x = int(event.position().x())
         self._dragging = None
+        self._update_hover_and_cursor(x)
+
+    def leaveEvent(self, event) -> None:
+        del event
+        self._hover_handle = None
+        self.setCursor(Qt.ArrowCursor)
+        self.update()

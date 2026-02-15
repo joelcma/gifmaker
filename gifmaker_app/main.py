@@ -11,6 +11,7 @@ def main() -> int:
     window.show()
 
     if len(sys.argv) > 1:
+        window.open_button.hide()
         window.load_video(sys.argv[1])
 
     return app.exec()

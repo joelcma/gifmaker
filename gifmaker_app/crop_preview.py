@@ -29,6 +29,8 @@ class CropPreviewWidget(QWidget):
         self._dragging_rect = False
         self._drag_offset_x = 0
         self._drag_offset_y = 0
+        self._hover_corner: str | None = None
+        self._hover_inside = False
 
     def set_source_size(self, width: int, height: int) -> None:
         self._source_width = max(1, width)
@@ -149,14 +151,51 @@ class CropPreviewWidget(QWidget):
         painter.drawRect(rect_left, rect_top, rect_w, rect_h)
 
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor("#22c55e"))
-        for cx, cy in (
-            (rect_left, rect_top),
-            (rect_left + rect_w, rect_top),
-            (rect_left, rect_top + rect_h),
-            (rect_left + rect_w, rect_top + rect_h),
-        ):
+        corners = (
+            ("tl", rect_left, rect_top),
+            ("tr", rect_left + rect_w, rect_top),
+            ("bl", rect_left, rect_top + rect_h),
+            ("br", rect_left + rect_w, rect_top + rect_h),
+        )
+        for name, cx, cy in corners:
+            if name == self._drag_corner:
+                painter.setBrush(QColor("#86efac"))
+            elif name == self._hover_corner:
+                painter.setBrush(QColor("#4ade80"))
+            else:
+                painter.setBrush(QColor("#22c55e"))
             painter.drawEllipse(QPointF(cx, cy), self.HANDLE_RADIUS, self.HANDLE_RADIUS)
+
+    def _hit_test(self, mouse_pos: QPointF) -> tuple[str | None, bool]:
+        corners = {
+            "tl": self._source_to_widget(self._crop_x, self._crop_y),
+            "tr": self._source_to_widget(self._crop_x + self._crop_w, self._crop_y),
+            "bl": self._source_to_widget(self._crop_x, self._crop_y + self._crop_h),
+            "br": self._source_to_widget(self._crop_x + self._crop_w, self._crop_y + self._crop_h),
+        }
+
+        for name, point in corners.items():
+            if (mouse_pos - point).manhattanLength() <= self.HANDLE_RADIUS * 2:
+                return name, False
+
+        sx, sy = self._widget_to_source(mouse_pos.x(), mouse_pos.y())
+        inside = self._crop_x <= sx <= self._crop_x + self._crop_w and self._crop_y <= sy <= self._crop_y + self._crop_h
+        return None, inside
+
+    def _update_cursor_and_hover(self, mouse_pos: QPointF) -> None:
+        corner, inside = self._hit_test(mouse_pos)
+        self._hover_corner = corner
+        self._hover_inside = inside
+
+        if corner in ("tl", "br"):
+            self.setCursor(Qt.SizeFDiagCursor)
+        elif corner in ("tr", "bl"):
+            self.setCursor(Qt.SizeBDiagCursor)
+        elif inside:
+            self.setCursor(Qt.SizeAllCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+        self.update()
 
     def mousePressEvent(self, event) -> None:
         if event.button() != Qt.LeftButton or self._image_pixmap is None:
@@ -165,27 +204,23 @@ class CropPreviewWidget(QWidget):
         self._drag_corner = None
         self._dragging_rect = False
 
-        corners = {
-            "tl": self._source_to_widget(self._crop_x, self._crop_y),
-            "tr": self._source_to_widget(self._crop_x + self._crop_w, self._crop_y),
-            "bl": self._source_to_widget(self._crop_x, self._crop_y + self._crop_h),
-            "br": self._source_to_widget(self._crop_x + self._crop_w, self._crop_y + self._crop_h),
-        }
-
         mouse_pos = event.position()
-        for name, point in corners.items():
-            if (mouse_pos - point).manhattanLength() <= self.HANDLE_RADIUS * 2:
-                self._drag_corner = name
-                return
+        corner, inside = self._hit_test(mouse_pos)
+        if corner is not None:
+            self._drag_corner = corner
+            self.update()
+            return
 
         sx, sy = self._widget_to_source(mouse_pos.x(), mouse_pos.y())
-        if self._crop_x <= sx <= self._crop_x + self._crop_w and self._crop_y <= sy <= self._crop_y + self._crop_h:
+        if inside:
             self._dragging_rect = True
             self._drag_offset_x = int(sx) - self._crop_x
             self._drag_offset_y = int(sy) - self._crop_y
+            self.update()
 
     def mouseMoveEvent(self, event) -> None:
         if self._drag_corner is None and not self._dragging_rect:
+            self._update_cursor_and_hover(event.position())
             return
 
         sx, sy = self._widget_to_source(event.position().x(), event.position().y())
@@ -224,6 +259,14 @@ class CropPreviewWidget(QWidget):
         self.set_crop_rect(left, top, right - left, bottom - top, emit_signal=True)
 
     def mouseReleaseEvent(self, event) -> None:
-        del event
+        mouse_pos = event.position()
         self._drag_corner = None
         self._dragging_rect = False
+        self._update_cursor_and_hover(mouse_pos)
+
+    def leaveEvent(self, event) -> None:
+        del event
+        self._hover_corner = None
+        self._hover_inside = False
+        self.setCursor(Qt.ArrowCursor)
+        self.update()

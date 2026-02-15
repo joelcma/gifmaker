@@ -31,6 +31,48 @@ class GifMakerWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("GIF Maker")
         self.resize(980, 680)
+        self.setStyleSheet(
+            """
+            QLineEdit, QComboBox, QPushButton {
+                border-radius: 8px;
+                padding: 4px 8px;
+            }
+            QPushButton {
+                min-height: 28px;
+            }
+            QPushButton#openButton {
+                background-color: #2b2b2b;
+                color: #e5e5e5;
+                border: 1px solid #4a4a4a;
+                padding: 5px 12px;
+                font-weight: 500;
+            }
+            QPushButton#openButton:hover {
+                background-color: #363636;
+            }
+            QPushButton#openButton:pressed {
+                background-color: #202020;
+            }
+            QPushButton#exportButton {
+                background-color: #22c55e;
+                color: #0b2214;
+                border: 1px solid #16a34a;
+                font-weight: 600;
+                padding: 5px 12px;
+            }
+            QPushButton#exportButton:hover {
+                background-color: #34d399;
+            }
+            QPushButton#exportButton:pressed {
+                background-color: #16a34a;
+            }
+            QPushButton#exportButton:disabled {
+                background-color: #2b2b2b;
+                color: #8b8b8b;
+                border: 1px solid #3a3a3a;
+            }
+            """
+        )
 
         self.reader = VideoReader()
         self.current_frame = 0
@@ -45,11 +87,14 @@ class GifMakerWindow(QMainWindow):
 
         top_row = QHBoxLayout()
         self.open_button = QPushButton("Open Video")
+        self.open_button.setObjectName("openButton")
         self.export_button = QPushButton("Export")
+        self.export_button.setObjectName("exportButton")
         self.export_button.setEnabled(False)
         self.format_combo = QComboBox()
         self.format_combo.addItems(["gif", "webm", "mp4", "mpeg"])
         self.format_combo.setCurrentText("gif")
+        self.format_combo.setFixedWidth(110)
         self.compare_toggle = QCheckBox("Enable first/last comparison")
         self.compare_toggle.setEnabled(False)
         top_row.addWidget(self.open_button)
@@ -79,16 +124,19 @@ class GifMakerWindow(QMainWindow):
         self.gif_width_spin = QSpinBox()
         self.gif_width_spin.setRange(120, 1920)
         self.gif_width_spin.setValue(480)
+        self.gif_width_spin.setFixedWidth(92)
         self.gif_fps_spin = QSpinBox()
         self.gif_fps_spin.setRange(1, 30)
         self.gif_fps_spin.setValue(12)
+        self.gif_fps_spin.setFixedWidth(86)
         self.quality_spin = QSpinBox()
         self.quality_spin.setRange(1, 100)
         self.quality_spin.setValue(80)
+        self.quality_spin.setFixedWidth(86)
 
         footer = QFrame()
         footer.setFrameShape(QFrame.StyledPanel)
-        footer.setStyleSheet("QFrame { border: 1px solid #444; background-color: #161616; }")
+        footer.setStyleSheet("QFrame { border: none; background-color: #161616; }")
         footer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(10, 8, 10, 8)
@@ -104,11 +152,11 @@ class GifMakerWindow(QMainWindow):
         footer_layout.addWidget(self.quality_spin)
 
         footer_layout.addStretch(1)
+        footer_layout.addWidget(self.format_combo)
+        footer_layout.addSpacing(10)
         self.size_estimate_label = QLabel("Est size: —")
         self.size_estimate_label.setStyleSheet("color: #cfcfcf;")
         footer_layout.addWidget(self.size_estimate_label)
-        footer_layout.addSpacing(10)
-        footer_layout.addWidget(self.format_combo)
         footer_layout.addWidget(self.export_button)
         layout.addWidget(footer)
 
