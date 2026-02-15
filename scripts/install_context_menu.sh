@@ -7,6 +7,9 @@ if [ "$#" -ne 1 ]; then
 fi
 
 EXECUTABLE="$1"
+SUPPORTED_EXTENSIONS="mp4 mov mkv avi webm m4v"
+MIME_TYPES="video/mp4;video/quicktime;video/x-matroska;video/x-msvideo;video/webm;video/x-m4v;"
+THUNAR_PATTERNS="*.mp4;*.MP4;*.mov;*.MOV;*.mkv;*.MKV;*.avi;*.AVI;*.webm;*.WEBM;*.m4v;*.M4V"
 
 if [ ! -x "$EXECUTABLE" ]; then
   echo "Executable not found or not executable: $EXECUTABLE"
@@ -40,6 +43,22 @@ if [ "\$#" -lt 1 ]; then
 fi
 
 INPUT_PATH="\$1"
+INPUT_LOWER="\$(printf '%s' "\$INPUT_PATH" | tr '[:upper:]' '[:lower:]')"
+
+is_supported=0
+for ext in ${SUPPORTED_EXTENSIONS}; do
+  case "\$INPUT_LOWER" in
+    *."\$ext")
+      is_supported=1
+      break
+      ;;
+  esac
+done
+
+if [ "\$is_supported" -ne 1 ]; then
+  echo "[\$(date '+%F %T')] Unsupported file extension: \$INPUT_PATH" >> "\$LOG_FILE"
+  exit 1
+fi
 
 if [ ! -x "\$TARGET_EXEC" ]; then
   echo "[\$(date '+%F %T')] Executable not found: \$TARGET_EXEC" >> "\$LOG_FILE"
@@ -61,7 +80,7 @@ Exec=${LAUNCHER_FILE} %f
 Terminal=false
 NoDisplay=false
 Categories=AudioVideo;Video;
-MimeType=video/*;
+MimeType=${MIME_TYPES}
 EOF
 
 mkdir -p "$KDE_MENU_DIR"
@@ -69,7 +88,7 @@ cat > "$KDE_SERVICE_FILE" <<EOF
 [Desktop Entry]
 Type=Service
 X-KDE-ServiceTypes=KonqPopupMenu/Plugin
-MimeType=video/*;
+MimeType=${MIME_TYPES}
 Actions=OpenInGifMaker
 X-KDE-Priority=TopLevel
 
@@ -80,13 +99,14 @@ Icon=video-x-generic
 EOF
 
 mkdir -p "$THUNAR_CONFIG_DIR"
-python3 - "$THUNAR_UCA_FILE" <<'PY'
+THUNAR_PATTERNS="$THUNAR_PATTERNS" python3 - "$THUNAR_UCA_FILE" <<'PY'
 import os
 import sys
 import xml.etree.ElementTree as ET
 
 uca_file = sys.argv[1]
 marker = "OPEN_IN_GIFMAKER"
+patterns = os.environ.get("THUNAR_PATTERNS", "*.mp4;*.mov;*.mkv;*.avi;*.webm;*.m4v")
 
 if os.path.exists(uca_file):
   try:
@@ -115,7 +135,7 @@ ET.SubElement(action, "submenu").text = ""
 ET.SubElement(action, "unique-id").text = "gifmaker-open-context"
 ET.SubElement(action, "command").text = f'{os.path.expanduser("~")}/.local/bin/gifmaker-open %f'
 ET.SubElement(action, "description").text = marker
-ET.SubElement(action, "patterns").text = "*"
+ET.SubElement(action, "patterns").text = patterns
 ET.SubElement(action, "directories")
 ET.SubElement(action, "audio-files")
 ET.SubElement(action, "image-files")

@@ -12,7 +12,7 @@ OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
 RELEASE_NAME := $(APP_NAME)-$(OS)-$(ARCH)
 RELEASE_PATH := $(RELEASE_DIR)/$(RELEASE_NAME)
 
-.PHONY: help venv install-deps run build release deploy install-context-menu uninstall-context-menu clean
+.PHONY: help venv install-deps run build release deploy install-context-menu uninstall-context-menu full_install clean
 
 help:
 	@echo "Targets:"
@@ -24,6 +24,7 @@ help:
 	@echo "  deploy       Build and install binary to $(INSTALL_PATH)"
 	@echo "  install-context-menu   Install desktop/context menu integration"
 	@echo "  uninstall-context-menu Remove desktop/context menu integration"
+	@echo "  full_install Build, deploy, and install context menu integration"
 	@echo "  clean        Remove build artifacts"
 
 venv:
@@ -58,6 +59,11 @@ install-context-menu:
 
 uninstall-context-menu:
 	./scripts/uninstall_context_menu.sh
+
+full_install:
+	$(MAKE) install-deps
+	$(MAKE) deploy
+	$(MAKE) install-context-menu
 
 clean:
 	rm -rf build dist *.spec __pycache__ gifmaker_app/__pycache__

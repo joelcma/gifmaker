@@ -49,6 +49,7 @@ make uninstall-context-menu
 ```
 
 Notes:
+- Context menu action is shown only for supported input formats: `.mp4`, `.mov`, `.mkv`, `.avi`, `.webm`, `.m4v`.
 - On XFCE/Thunar, restart Thunar after install: `thunar -q`.
 - If context launch fails, check: `~/.cache/gifmaker/context-menu.log`.
 
