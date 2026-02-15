@@ -4,6 +4,7 @@ Desktop app for trimming, cropping, previewing, and exporting short loops from v
 
 ## Features
 - Open video from app or CLI argument (`python app.py /path/video.mp4`).
+- When launched with a CLI video path, `Open Video` is hidden for a cleaner UI.
 - Timeline with thumbnails and draggable **start/end** markers.
 - Interactive crop rectangle with corner drag + full-rectangle drag.
 - First/last frame overlap comparison (blue/red blend) for loop alignment.
@@ -23,7 +24,7 @@ pip install -r requirements.txt
 
 ## Run
 ```bash
-python app.py
+make run
 # or
 python app.py /path/to/video.mp4
 ```
